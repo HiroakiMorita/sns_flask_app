@@ -52,7 +52,7 @@ class PasswordResetToken(db.Model):
     
     __tablename__ = 'password_reset_tokens'
 
-    id = db.Column(db.Integer, primary_ley=True)
+    id = db.Column(db.Integer, primary_key=True)
     token = db.Column(
         db.String(64),
         unique=True,
