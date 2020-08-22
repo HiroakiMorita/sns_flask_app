@@ -1,8 +1,12 @@
+from datetime import datetime
+
 from flask import(
     Blueprint, abort, request, render_template,
     redirect, url_for, flash
 )
-from flask_login import login_user, login_required, logout_user
+from flask_login import (
+    login_user, login_required, logout_user, current_user
+)
 from flaskr.models import(
     User, PasswordResetToken
 )
@@ -10,7 +14,8 @@ from flaskr import db
 
 from flaskr.forms import (
     LoginForm, RegisterForm, ResetPasswordForm,
-    ForgotPasswordForm
+    ForgotPasswordForm, UserForm, ChangePasswordForm,
+    UserSearchForm
 )
 
 from os import path
@@ -100,3 +105,60 @@ def forgot_password():
         else:
             flash('存在しないユーザーです')
     return render_template('forgot_password.html', form=form)
+
+@bp.route('/user', methods=['GET', 'POST'])
+@login_required
+def user():
+    form = UserForm(request.form)
+    if request.method == 'POST' and form.validate():
+        user_id = current_user.get_id()
+        user = User.select_user_by_id(user_id)
+        with db.session.begin(subtransactions=True):
+            user.username = form.username.data
+            user.email = form.email.data
+            file = request.files[form.picture_path.name].read()
+            if file:
+                file_name = user_id + '_' + \
+                    str(int(datetime.now().timestamp())) + '.jpg'
+                picture_path = 'flaskr/static/user_image/' + file_name
+                open(picture_path, 'wb').write(file)
+                user.picture_path = 'user_image/' + file_name
+        db.session.commit()
+        flash('ユーザー情報の更新に成功しました')
+    return render_template('user.html', form=form)
+
+@bp.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    form = ChangePasswordForm(request.form)
+    if request.method == 'POST' and form.validate():
+        user = User.select_user_by_id(current_user.get_id())
+        password = form.password.data
+        with db.session.begin(subtransactions=True):
+            user.save_new_password(password)
+        db.session.commit()
+        flash('パスワードの更新に成功しました')
+        return redirect(url_for('app.user'))
+    return render_template('change_password.html', form=form)
+
+@bp.route('/user_search', methods=['GET', 'POST'])
+@login_required
+def user_search():
+    form = UserSearchForm(request.form)
+    users = None
+    if request.method == 'POST' and form.validate():
+        username = form.username.data
+        users = User.search_by_name(username)
+    return render_template(
+        'user_search.html', form=form, users=users
+    )
+
+
+
+@bp.app_errorhandler(404)
+def page_not_found(e):
+    return redirect(url_for('app.home'))
+
+@bp.app_errorhandler(500)
+def server_error(e):
+    return render_template('500.html'), 500
