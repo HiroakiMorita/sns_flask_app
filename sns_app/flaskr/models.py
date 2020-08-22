@@ -1,6 +1,8 @@
 from flaskr import db, login_manager
 from flask_bcrypt import generate_password_hash, check_password_hash
 from flask_login import UserMixin, current_user
+from sqlalchemy.orm import aliased # 参照先を複数テーブルに紐づける
+from sqlalchemy import and_, or_ # 複数の条件もしくはどれか条件を満たした場合
 
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -47,14 +49,33 @@ class User(UserMixin, db.Model):
         self.password = generate_password_hash(new_password)
         self.is_active = True
 
+
+    # UserConnectと紐付ける outer join
+
     @classmethod
     def search_by_name(cls, username):
+        user_connect1 = aliased(UserConnect) # from_user_id: 検索相手のid、 to_user_id: ログインユーザーのidでUserConnectに紐づける
+        user_connect2 = aliased(UserConnect) # to_user_id: 検索相手のid、 from_user_id: ログインユーザーのidでUserConnectに紐づける
         return cls.query.filter(
             cls.username.like(f'%{username}%'),
             cls.id != int(current_user.get_id()),
             cls.is_active == True
+        ).outerjoin(
+            user_connect1,
+            and_(
+                user_connect1.from_user_id == cls.id,
+                user_connect1.to_user_id == current_user.get_id()
+            )
+        ).outerjoin(
+            user_connect2,
+            and_(
+                user_connect2.from_user_id == current_user.get_id(),
+                user_connect2.to_user_id == cls.id
+            )
         ).with_entities(
-            cls.id, cls.username, cls.picture_path
+            cls.id, cls.username, cls.picture_path,
+            user_connect1.status.label("joined_status_to_from"),
+            user_connect2.status.label("joined_status_from_to")
         ).all()
 
 
