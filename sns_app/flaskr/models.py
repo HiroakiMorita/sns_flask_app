@@ -1,6 +1,6 @@
 from flaskr import db, login_manager
 from flask_bcrypt import generate_password_hash, check_password_hash
-from flask_login import UserMixin
+from flask_login import UserMixin, current_user
 
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -47,6 +47,17 @@ class User(UserMixin, db.Model):
         self.password = generate_password_hash(new_password)
         self.is_active = True
 
+    @classmethod
+    def search_by_name(cls, username):
+        return cls.query.filter(
+            cls.username.like(f'%{username}%'),
+            cls.id != int(current_user.get_id()),
+            cls.is_active == True
+        ).with_entities(
+            cls.id, cls.username, cls.picture_path
+        ).all()
+
+
 # パスワードリセット時に利用
 class PasswordResetToken(db.Model):
     
@@ -85,7 +96,10 @@ class PasswordResetToken(db.Model):
     def get_user_id_by_token(cls, token):
         now = datetime.now()
         record = cls.query.filter_by(token=str(token)).filter(cls.expire_at > now).first()
-        return record.user_id
+        if record:
+            return record.user_id
+        else:
+            return None
 
     @classmethod
     def delete_token(cls, token):
