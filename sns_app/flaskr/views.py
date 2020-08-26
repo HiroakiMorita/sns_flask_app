@@ -1,13 +1,13 @@
 from datetime import datetime
 
-from flask import(
+from flask import (
     Blueprint, abort, request, render_template,
     redirect, url_for, flash, session
 )
 from flask_login import (
     login_user, login_required, logout_user, current_user
 )
-from flaskr.models import(
+from flaskr.models import (
     User, PasswordResetToken, UserConnect
 )
 from flaskr import db
@@ -17,8 +17,6 @@ from flaskr.forms import (
     ForgotPasswordForm, UserForm, ChangePasswordForm,
     UserSearchForm, ConnectForm
 )
-
-from os import path
 
 bp = Blueprint('app', __name__, url_prefix='')
 
@@ -31,7 +29,6 @@ def home():
         friends = User.select_friends()
         requested_friends = User.select_requested_friends()
         requesting_friends = User.select_requesting_friends()
-
     return render_template(
         'home.html',
         friends = friends,
@@ -42,7 +39,7 @@ def home():
 
 @bp.route('/logout')
 def logout():
-    logout_user()
+    logout_user() # ログアウト
     return redirect(url_for('app.home'))
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -57,9 +54,9 @@ def login():
                 next = url_for('app.home')
             return redirect(next)
         elif not user:
-            flash('存在しないユーザーです')
+            flash('存在しないユーザです')
         elif not user.is_active:
-            flash('無効なユーザーです。パスワードを再設定してください')
+            flash('無効なユーザです。パスワードを再設定してください')
         elif not user.validate_password(form.password.data):
             flash('メールアドレスとパスワードの組み合わせが誤っています')
     return render_template('login.html', form=form)
@@ -79,6 +76,7 @@ def register():
         with db.session.begin(subtransactions=True):
             token = PasswordResetToken.publish_token(user)
         db.session.commit()
+        # メールに飛ばすほうがいい
         print(
             f'パスワード設定用URL: http://127.0.0.1:5000/reset_password/{token}'
         )
@@ -117,7 +115,7 @@ def forgot_password():
             print(reset_url)
             flash('パスワード再登録用のURLを発行しました。')
         else:
-            flash('存在しないユーザーです')
+            flash('存在しないユーザです')
     return render_template('forgot_password.html', form=form)
 
 @bp.route('/user', methods=['GET', 'POST'])
@@ -138,7 +136,7 @@ def user():
                 open(picture_path, 'wb').write(file)
                 user.picture_path = 'user_image/' + file_name
         db.session.commit()
-        flash('ユーザー情報の更新に成功しました')
+        flash('ユーザ情報の更新に成功しました')
     return render_template('user.html', form=form)
 
 @bp.route('/change_password', methods=['GET', 'POST'])
@@ -165,13 +163,12 @@ def user_search():
     if request.method == 'POST' and form.validate():
         username = form.username.data
         users = User.search_by_name(username)
-        # 検索結果のユーザーを取ってくる Userテーブルと
-        # UserConnectテーブルを紐付けて、statusをみる
-        # from_user_id = 自分のid、　to_user_id = 相手のid、status=1の場合は自分から友達申請中
-        # to_user_id = 自分のid、　from_user_id = 相手のid, status=1の場合は、相手から友達申請されている
-        # status=2の場合、 友達になっている
+        # 検索結果のユーザを取ってくる。UserテーブルとUserConnectテーブルを紐づけて、
+        # UserConnectテーブルのstatusを見ます
+        # from_user_id = 自分のID,　to_user_id = 相手のID、status=1の場合は自分から友達申請中
+        # to_user_id = 自分のID, from_user_id = 相手のID、status=1の場合は、相手から友達申請されている
+        # status = 2の場合、友達になっている
         # レコードが存在しない場合、申請していないし、されていない
-
     return render_template(
         'user_search.html', form=form, connect_form=connect_form, users=users
     )
