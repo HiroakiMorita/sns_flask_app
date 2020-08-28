@@ -204,3 +204,43 @@ class UserConnect(db.Model):
     def update_status(self):
         self.status = 2
         self.update_at = datetime.now()
+
+    @classmethod
+    def is_friend(cls, to_user_id):
+        user = cls.query.filter(
+            or_(
+                and_(
+                    UserConnect.from_user_id == current_user.get_id(),
+                    UserConnect.to_user_id == to_user_id,
+                    UserConnect.status == 2
+                ),
+                and_(
+                    UserConnect.from_user_id == to_user_id,
+                    UserConnect.to_user_id == current_user.get_id(),
+                    UserConnect.status == 2
+                )
+            )
+        ).first()
+        return True if user else False
+
+class Message(db.Model):
+    
+    __tablename__ = 'messages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    from_user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id'), index=True
+    )
+    is_read = db.Column(
+        db.Boolean, default=True
+    )
+    message = db.Column(
+        db.Text
+    )
+    create_at = db.Column(db.DateTime, default=datetime.now)
+    update_at = db.Column(db.DateTime, default=datetime.now)
+
+    def __init__(self, from_user_id, to_user_id, message):
+        self.from_user_id = from_user_id
+        self.to_user_id = to_user_id
+        self.message = message
