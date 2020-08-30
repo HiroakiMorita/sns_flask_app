@@ -231,8 +231,11 @@ class Message(db.Model):
     from_user_id = db.Column(
         db.Integer, db.ForeignKey('users.id'), index=True
     )
+    to_user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id'), index=True
+    )
     is_read = db.Column(
-        db.Boolean, default=True
+        db.Boolean, default=False
     )
     message = db.Column(
         db.Text
@@ -244,3 +247,21 @@ class Message(db.Model):
         self.from_user_id = from_user_id
         self.to_user_id = to_user_id
         self.message = message
+
+    def create_message(self):
+        db.session.add(self)
+    
+    @classmethod
+    def get_friend_messages(cls, id1, id2):
+        return cls.query.filter(
+            or_(
+                and_(
+                    cls.from_user_id == id1,
+                    cls.to_user_id == id2
+                ),
+                and_(
+                    cls.from_user_id == id2,
+                    cls.to_user_id == id1
+                )
+            )
+        ).order_by(cls.id).all()
