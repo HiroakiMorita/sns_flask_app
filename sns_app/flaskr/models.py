@@ -237,6 +237,10 @@ class Message(db.Model):
     is_read = db.Column(
         db.Boolean, default=False
     )
+    # 既読のモノを確認したか
+    is_checked = db.Column(
+        db.Boolean, default=False
+    )
     message = db.Column(
         db.Text
     )
@@ -263,5 +267,22 @@ class Message(db.Model):
                     cls.from_user_id == id2,
                     cls.to_user_id == id1
                 )
+            )
+        ).order_by(cls.id).all()
+
+    @classmethod
+    def update_is_read_by_ids(cls, ids):
+        cls.query.filter(cls.id.in_(ids)).update(
+            {'is_read': 1},
+            synchronize_session='fetch'
+        )
+
+    @classmethod
+    def select_not_read_messages(cls, from_user_id, to_user_id):
+        return cls.query.filter(
+            and_(
+                cls.from_user_id == from_user_id,
+                cls.to_user_id == to_user_id,
+                cls.is_read == 0
             )
         ).order_by(cls.id).all()

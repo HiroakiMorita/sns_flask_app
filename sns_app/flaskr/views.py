@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import (
     Blueprint, abort, request, render_template,
-    redirect, url_for, flash, session
+    redirect, url_for, flash, session, jsonify
 )
 from flask_login import (
     login_user, login_required, logout_user, current_user
@@ -18,6 +18,7 @@ from flaskr.forms import (
     ForgotPasswordForm, UserForm, ChangePasswordForm,
     UserSearchForm, ConnectForm, MessageForm
 )
+from flaskr.utils.message_format import make_message_format
 
 bp = Blueprint('app', __name__, url_prefix='')
 
@@ -201,6 +202,12 @@ def message(id):
         return redirect(url_for('app.home'))
     form = MessageForm(request.form)
     messages = Message.get_friend_messages(current_user.get_id(), id)
+    user = User.select_user_by_id(id)
+    read_message_ids = [message.id for message in messages if (not message.is_read) and (message.from_user_id == int(id))]
+    if read_message_ids:
+        with db.session.begin(subtransactions=True):
+            Message.update_is_read_by_ids(read_message_ids)
+        db.session.commit()
     if request.method == 'POST' and form.validate():
         new_message = Message(current_user.get_id(), id, form.message.data)
         with db.session.begin(subtransactions=True):
@@ -209,8 +216,23 @@ def message(id):
         return redirect(url_for('app.message', id=id))
     return render_template(
         'message.html', form=form,
-        messages=messages, to_user_id=id
+        messages=messages, to_user_id=id,
+        user=user
     )
+
+@bp.route('/message_ajax', methods=['GET'])
+@login_required
+def message_ajax():
+    user_id = request.args.get('user_id', -1, type=int)
+    # まだ読んでいない相手からのメッセージ取得
+    user = User.select_user_by_id(user_id)
+    not_read_messages = Message.select_not_read_messages(user_id, current_user.get_id())
+    not_read_message_ids = [message.id for message in not_read_messages]
+    if not_read_message_ids:
+        with db.session.begin(subtransactions=True):
+            Message.update_is_read_by_ids(not_read_message_ids)
+        db.session.commit()
+    return jsonify(data=make_message_format(user, not_read_messages))
 
 @bp.app_errorhandler(404)
 def page_not_found(e):
