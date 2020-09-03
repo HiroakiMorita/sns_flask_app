@@ -1,4 +1,4 @@
-from wtforms.form import Form
+from flask_wtf import FlaskForm
 from wtforms.fields import (
     StringField, FileField, PasswordField,
     SubmitField, HiddenField, TextAreaField
@@ -11,7 +11,7 @@ from flask import flash
 from flaskr.models import User, UserConnect
 
 #ログイン用フォーム
-class LoginForm(Form):
+class LoginForm(FlaskForm):
     email = StringField('メール: ', validators=[DataRequired(), Email()])
     password = PasswordField(
         'パスワード: ',
@@ -22,7 +22,7 @@ class LoginForm(Form):
     submit = SubmitField('ログイン')
 
 #登録用フォーム
-class RegisterForm(Form):
+class RegisterForm(FlaskForm):
     email = StringField(
         'メール:', validators=[DataRequired(), Email('メールアドレスが誤っています')]
     )
@@ -34,7 +34,7 @@ class RegisterForm(Form):
             raise ValidationError('メールアドレスは既に登録されています')
 
 #パスワード設定用のフォーム
-class ResetPasswordForm(Form):
+class ResetPasswordForm(FlaskForm):
     password = PasswordField(
         'パスワード',
         validators=[DataRequired(), EqualTo('confirm_password', message='パスワードが一致しません')]
@@ -47,7 +47,7 @@ class ResetPasswordForm(Form):
         if len(field.data) < 8:
             raise ValidationError('パスワードは8文字以上です')
 
-class ForgotPasswordForm(Form):
+class ForgotPasswordForm(FlaskForm):
     email = StringField('メール:', validators=[DataRequired(), Email()])
     submit = SubmitField('パスワードを再設定する')
 
@@ -55,7 +55,7 @@ class ForgotPasswordForm(Form):
         if not User.select_user_by_email(field.data):
             raise ValidationError('そのメールアドレスは存在しません')
 
-class UserForm(Form):
+class UserForm(FlaskForm):
     email = StringField('メール: ', validators=[DataRequired(), Email('メールアドレスが誤っています')]
     )
     username = StringField('名前: ', validators=[DataRequired()])
@@ -63,7 +63,7 @@ class UserForm(Form):
     submit = SubmitField('登録情報更新')
 
     def validate(self):
-        if not super(Form, self).validate():
+        if not super(FlaskForm, self).validate():
             return False
         user = User.select_user_by_email(self.email.data)
         if user:
@@ -72,7 +72,7 @@ class UserForm(Form):
                 return False
         return True
 
-class ChangePasswordForm(Form):
+class ChangePasswordForm(FlaskForm):
     password = PasswordField(
         'パスワード',
         validators=[DataRequired(), EqualTo('confirm_password', message='パスワードが一致しません')]
@@ -85,24 +85,24 @@ class ChangePasswordForm(Form):
         if len(field.data) < 8:
             raise ValidationError('パスワードは8文字以上です')
 
-class UserSearchForm(Form):
+class UserSearchForm(FlaskForm):
     username = StringField(
         '名前: ', validators=[DataRequired()]
     )
     submit = SubmitField('ユーザー検索')
 
-class ConnectForm(Form):
+class ConnectForm(FlaskForm):
     connect_condition = HiddenField()
     to_user_id = HiddenField()
     submit = SubmitField()
 
-class MessageForm(Form):
+class MessageForm(FlaskForm):
     to_user_id = HiddenField()
     message = TextAreaField()
     submit = SubmitField('メッセージ送信')
 
     def validate(self):
-        if not super(Form, self).validate():
+        if not super(FlaskForm, self).validate():
             return False
         is_friend = UserConnect.is_friend(self.to_user_id.data)
         if not is_friend:
