@@ -2,7 +2,7 @@ from flaskr import db, login_manager
 from flask_bcrypt import generate_password_hash, check_password_hash
 from flask_login import UserMixin, current_user
 from sqlalchemy.orm import aliased # 参照先を複数テーブルに紐づける
-from sqlalchemy import and_, or_ # 複数の条件もしくはどれか条件を満たした場合
+from sqlalchemy import and_, or_, desc # 複数の条件もしくはどれか条件を満たした場合
 
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -256,7 +256,7 @@ class Message(db.Model):
         db.session.add(self)
     
     @classmethod
-    def get_friend_messages(cls, id1, id2):
+    def get_friend_messages(cls, id1, id2, offset_value=0, limit_value=100):
         return cls.query.filter(
             or_(
                 and_(
@@ -268,7 +268,7 @@ class Message(db.Model):
                     cls.to_user_id == id1
                 )
             )
-        ).order_by(cls.id).all()
+        ).order_by(desc(cls.id)).offset(offset_value).limit(limit_value).all()
 
     @classmethod
     def update_is_read_by_ids(cls, ids):
