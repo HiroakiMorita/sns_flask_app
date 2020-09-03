@@ -155,16 +155,21 @@ def change_password():
         return redirect(url_for('app.user'))
     return render_template('change_password.html', form=form)
 
-@bp.route('/user_search', methods=['GET', 'POST'])
+@bp.route('/user_search', methods=['GET'])
 @login_required
 def user_search():
     form = UserSearchForm(request.form)
     connect_form = ConnectForm()
     session['url'] = 'app.user_search'
     users = None
-    if request.method == 'POST' and form.validate():
-        username = form.username.data
-        users = User.search_by_name(username)
+    user_name = request.args.get('username', None, type=str)
+    next_url = prev_url = None
+    if user_name:
+        page = request.args.get('page', 1, type=int)
+        posts = User.search_by_name(user_name, page)
+        next_url = url_for('app.user_search', page=posts.next_num, username=user_name) if posts.has_next else None
+        prev_url = url_for('app.user_search', page=posts.prev_num, username=user_name) if posts.has_prev else None
+        users = posts.items
         # 検索結果のユーザを取ってくる。UserテーブルとUserConnectテーブルを紐づけて、
         # UserConnectテーブルのstatusを見ます
         # from_user_id = 自分のID,　to_user_id = 相手のID、status=1の場合は自分から友達申請中
@@ -172,7 +177,8 @@ def user_search():
         # status = 2の場合、友達になっている
         # レコードが存在しない場合、申請していないし、されていない
     return render_template(
-        'user_search.html', form=form, connect_form=connect_form, users=users
+        'user_search.html', form=form, connect_form=connect_form,
+        users=users, next_url=next_url, prev_url=prev_url
     )
 
 @bp.route('/connect_user', methods=['POST'])
